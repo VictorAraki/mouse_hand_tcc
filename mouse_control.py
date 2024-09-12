@@ -73,8 +73,8 @@ class MouseControl():
     def draw_hand(self, hand, frame):
         """Desenha as marcas na mao"""
         self.mp_drawing.draw_landmarks(frame, hand)
-        cv2.circle(img=frame, center=(self.x_ref,self.y_ref), radius=10, color=(0, 255, 255))
-        cv2.circle(img=frame, center=(self.x_ref_click,self.y_ref_click), radius=10, color=(0, 255, 255))
+        cv2.circle(img=frame, center=(self.x_ref,self.y_ref), radius=20, color=(0, 255, 255))
+        cv2.circle(img=frame, center=(self.x_ref_click,self.y_ref_click), radius=20, color=(0, 255, 255))
 
 def start_mouse_control(mouse_on_func):
     """Inicia o controle do mouse."""
