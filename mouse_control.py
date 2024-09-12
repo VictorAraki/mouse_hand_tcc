@@ -23,7 +23,7 @@ class MouseControl():
         self.dist_click = int(os.getenv('DistanciaClick'))
         self.duration = float(os.getenv('DurationMove'))
 
-        self.is_hold = False
+        self.is_click = False
 
     def move_mouse(self, frame_width, frame_height, hand):
         """
@@ -58,12 +58,11 @@ class MouseControl():
         dist = self._distancia_entre_pontos(self.x_ref, self.y_ref, self.x_ref_click, self.y_ref_click)
 
         if dist < self.dist_click:
-            if not self.is_hold:
-                pyautogui.mouseDown()
-                self.is_hold = True
-        elif self.is_hold:
-            pyautogui.mouseUp()
-            self.is_hold = False
+            if not self.is_click:
+                pyautogui.click()
+                self.is_click = True
+        else:
+            self.is_click = False
 
     def process_hand(self, hand, frame_width, frame_height):
         """Processa a mão detectada e realiza as ações de controle do mouse."""
