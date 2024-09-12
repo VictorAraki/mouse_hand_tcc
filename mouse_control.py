@@ -21,6 +21,7 @@ class MouseControl():
         self.reference = int(os.getenv('MouseReference'))
         self.click_ref = int(os.getenv('MouseClickRef'))
         self.dist_click = int(os.getenv('DistanciaClick'))
+        self.duration = float(os.getenv('DurationMove'))
 
         self.is_hold = False
 
@@ -40,7 +41,7 @@ class MouseControl():
         x = x_pointer * scale_x * self.sensibility_x - off_set_x
         y = y_pointer * scale_y * self.sensibility_y - off_set_y
 
-        pyautogui.moveTo(x, y, duration=0.1, tween=pyautogui.easeInOutQuad)
+        pyautogui.moveTo(x, y, duration=self.duration)
 
     def _distancia_entre_pontos(self, x_ref, y_ref, x_ref_click, y_ref_click):
         # Calculando a distância euclidiana entre os dois pontos
