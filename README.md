@@ -1,5 +1,5 @@
 
-# Controle de Mouse com a CÃ¢mera
+# Controle de Mouse com a Camera
 
 Este projeto implementa um mouse virtual controlado por gestos usando a camera, com deteccao de maos via [MediaPipe](https://google.github.io/mediapipe/). Com esse sistema, voce pode mover o cursor e executar cliques de mouse com base nos movimentos e gestos das maos.
 
@@ -22,7 +22,7 @@ pip install pygame
 
 - **Clique esquerdo**: Junte o dedo indicador com o polegar.
 - **Clique direito**: Junte o dedo medio com o polegar.
-- **Segurar botÃ£o (arrastar)**: Junte o dedo indicador e o meio com o polegar (recomendado juntar o indicador primeiro).
+- **Segurar botao (arrastar)**: Junte o dedo indicador e o meio com o polegar (recomendado juntar o indicador primeiro).
 
 ## Arquitetura
 
