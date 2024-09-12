@@ -7,7 +7,11 @@ from utils import initialize
 
 
 class MouseControl():
-    def __init__(self) -> None:
+    def __init__(self, mp_drawing, screen_width, screen_height) -> None:
+        self.mp_drawing = mp_drawing
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+
         self.pointer = int(os.getenv('MousePointerPoint'))
         self.sensibility_x = float(os.getenv('MouseSensibility_X'))
         self.sensibility_y = float(os.getenv('MouseSensibility_Y'))
@@ -20,7 +24,7 @@ class MouseControl():
 
         self.is_hold = False
 
-    def move_mouse(self, screen_width, screen_height, frame_width, frame_height, hand):
+    def move_mouse(self, frame_width, frame_height, hand):
         """
         Move mouse pointer
         """
@@ -29,10 +33,10 @@ class MouseControl():
         y_pointer = int(hand.landmark[self.pointer].y * frame_height)
 
         # Calculate how to move mouse
-        scale_x = screen_width / frame_width
-        scale_y = screen_height / frame_height
-        off_set_x = screen_width * self.screen_offset_width
-        off_set_y = screen_height * self.screen_offset_height
+        scale_x = self.screen_width / frame_width
+        scale_y = self.screen_height / frame_height
+        off_set_x = self.screen_width * self.screen_offset_width
+        off_set_y = self.screen_height * self.screen_offset_height
         x = x_pointer * scale_x * self.sensibility_x - off_set_x
         y = y_pointer * scale_y * self.sensibility_y - off_set_y
 
@@ -44,13 +48,13 @@ class MouseControl():
         return distancia
 
     def click_mouse(self, frame_width, frame_height, hand):
-        x_ref = int(hand.landmark[self.reference].x * frame_width)
-        y_ref = int(hand.landmark[self.reference].y * frame_height)
+        self.x_ref = int(hand.landmark[self.reference].x * frame_width)
+        self.y_ref = int(hand.landmark[self.reference].y * frame_height)
 
-        x_ref_click = int(hand.landmark[self.click_ref].x * frame_width)
-        y_ref_click = int(hand.landmark[self.click_ref].y * frame_height)
+        self.x_ref_click = int(hand.landmark[self.click_ref].x * frame_width)
+        self.y_ref_click = int(hand.landmark[self.click_ref].y * frame_height)
 
-        dist = self._distancia_entre_pontos(x_ref, y_ref, x_ref_click, y_ref_click)
+        dist = self._distancia_entre_pontos(self.x_ref, self.y_ref, self.x_ref_click, self.y_ref_click)
 
         if dist < self.dist_click:
             if not self.is_hold:
@@ -60,19 +64,21 @@ class MouseControl():
             pyautogui.mouseUp()
             self.is_hold = False
 
-
-    def process_hand(self, results, frame_width, frame_height, screen_width, screen_height):
+    def process_hand(self, hand, frame_width, frame_height):
         """Processa a mão detectada e realiza as ações de controle do mouse."""
-        if results.multi_hand_landmarks:
-            hand = results.multi_hand_landmarks[0]
-        
-            self.move_mouse(screen_width, screen_height, frame_width, frame_height, hand)
-            self.click_mouse(frame_width, frame_height, hand)
+        self.move_mouse(frame_width, frame_height, hand)
+        self.click_mouse(frame_width, frame_height, hand)
+
+    def draw_hand(self, hand, frame):
+        """Desenha as marcas na mao"""
+        self.mp_drawing.draw_landmarks(frame, hand)
+        cv2.circle(img=frame, center=(self.x_ref,self.y_ref), radius=10, color=(0, 255, 255))
+        cv2.circle(img=frame, center=(self.x_ref_click,self.y_ref_click), radius=10, color=(0, 255, 255))
 
 def start_mouse_control(mouse_on_func):
     """Inicia o controle do mouse."""
     cap, mp_hand, mp_drawing, screen_width, screen_height = initialize()
-    mouse_control = MouseControl()
+    mouse_control = MouseControl(mp_drawing, screen_width, screen_height)
     if not cap:
         print("Falha na inicializacao da camera.")
         return
@@ -87,7 +93,10 @@ def start_mouse_control(mouse_on_func):
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = mp_hand.process(frame)
             frame_height, frame_width, _ = frame.shape
-            mouse_control.process_hand(results, frame_width, frame_height, screen_width, screen_height)
+            if results.multi_hand_landmarks:
+                hand = results.multi_hand_landmarks[0]
+                mouse_control.process_hand(hand, frame_width, frame_height)
+                mouse_control.draw_hand(hand, frame)
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             cv2.imshow('Virtual Mouse', frame)
             if cv2.waitKey(1) & 0xFF == 27:
