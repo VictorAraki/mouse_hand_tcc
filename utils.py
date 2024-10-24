@@ -1,14 +1,15 @@
 import cv2
+import os
 import mediapipe as mp
 import pyautogui
 
-# Configurações gerais
-MIN_DETECTION_CONFIDENCE = 0.8
-MIN_TRACKING_CONFIDENCE = 0.8
 
 def initialize():
     """Inicializa a câmera e o MediaPipe."""
     try:
+        # Configurações gerais
+        MIN_DETECTION_CONFIDENCE = 0.8
+        MIN_TRACKING_CONFIDENCE = 0.8
         cap = cv2.VideoCapture(0)
         if not cap.isOpened():
             raise Exception("Não foi possível acessar a câmera.")
@@ -28,5 +29,5 @@ def initialize():
         
         return cap, mp_hand, mp_drawing, screen_width, screen_height
     except Exception as e:
-        print(f"Erro na inicialização: {e}")
-        return None
+        print(f"Erro na inicialização: {e}", flush=True)
+        raise e

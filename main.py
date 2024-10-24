@@ -1,6 +1,9 @@
-from interface import create_interface
-from settings import set_env_var
+import tkinter as tk 
+
+from interface import MouseControlInterface
+
 
 if __name__ == "__main__":
-    set_env_var()
-    create_interface()
+    root = tk.Tk()
+    app = MouseControlInterface(root)
+    root.mainloop()
