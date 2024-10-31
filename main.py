@@ -1,9 +1,8 @@
-import tkinter as tk 
+from src.interface import MouseControlInterface
 
-from interface import MouseControlInterface
-
+def main():
+    app = MouseControlInterface()
+    app.run()
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = MouseControlInterface(root)
-    root.mainloop()
+    main()

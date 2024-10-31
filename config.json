@@ -1,0 +1,11 @@
+{
+    "MousePointerPoint": 8,
+    "MouseReference": 4,
+    "MouseClickRef": 12,
+    "MouseSensibility_X": 1.4,
+    "MouseSensibility_Y": 1.2,
+    "ScreenOffSet_width": 0.2,
+    "ScreenOffSet_height": 0.3,
+    "DistanciaClick": 50,
+    "DurationMove": 0.1
+}

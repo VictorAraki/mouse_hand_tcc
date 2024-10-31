@@ -1,17 +1,21 @@
 import tkinter as tk
 import os
 import json
-import threading
-from mouse_control import start_mouse_control
+import queue as q
+from src.mouse_control import PyAutoGuiHelper
+from src.mediapipe_hands import MediaPipeHelper
+from src.utils import setup, ProcessController
 
 
 class MouseControlInterface:
-    def __init__(self, root):
-        self.is_mouse_on = False
-        self.config = self.load_config()
-
-        self.root = root
+    def __init__(self):
+        self.setup = setup()
+        self.root = tk.Tk()
         self.root.title("Controle de Mouse Virtual")
+
+        self.running = False
+
+        self.config = self.load_config() # load config if exists
 
         # Create the interface
         self.create_interface()
@@ -23,7 +27,7 @@ class MouseControlInterface:
         button_frame.pack(pady=10)
 
         # Start and Stop buttons
-        btn_start = tk.Button(button_frame, text="Liga Mouse", command=lambda: threading.Thread(target=self.run_mouse_control).start())
+        btn_start = tk.Button(button_frame, text="Liga Mouse", command=self.start_mouse_control)
         btn_start.pack(side="left", padx=10)
 
         btn_stop = tk.Button(button_frame, text="Desliga Mouse", command=self.stop_mouse_control)
@@ -40,12 +44,12 @@ class MouseControlInterface:
         self.create_entry(entry_frame, "Sensibilidade eixo X:", "MouseSensibility_X")
         self.create_entry(entry_frame, "Sensibilidade eixo Y:", "MouseSensibility_Y")
         self.create_entry(entry_frame, "Desvio eixo X:", "ScreenOffSet_width")
-        self.create_entry(entry_frame, "Desvio eixo U:", "ScreenOffSet_height")
+        self.create_entry(entry_frame, "Desvio eixo Y:", "ScreenOffSet_height")
         self.create_entry(entry_frame, "Distancia para Click:", "DistanciaClick")
         self.create_entry(entry_frame, "Duracao do movimento:", "DurationMove")
 
         # Update button to apply the changes
-        update_button = tk.Button(self.root, text="Update", command=self.update_values)
+        update_button = tk.Button(self.root, text="Update", command=self.update_config_values)
         update_button.pack(pady=10)
 
         # Label to display the result
@@ -66,7 +70,7 @@ class MouseControlInterface:
 
         setattr(self, f"{config_key}_entry", entry)
 
-    def update_values(self):
+    def update_config_values(self):
         try:
             # Update the configuration dictionary with the new values
             self.config["MousePointerPoint"] = int(self.MousePointerPoint_entry.get())
@@ -89,24 +93,9 @@ class MouseControlInterface:
         except ValueError:
             self.result_label.config(text="Please enter valid numeric values")
 
-    def mouse_on_func(self):
-        return self.mouse_on
-
-    def run_mouse_control(self):
-        """Executa o controle do mouse em uma thread."""
-        self.mouse_on = True
-        self.update_values()
-        self.set_env_vars()
-        start_mouse_control(self.mouse_on_func)
-
     def set_env_vars(self):
         for key, value in self.config.items():
             os.environ[key] = str(value)
-
-    def stop_mouse_control(self):
-        """Para o controle do mouse."""
-        self.mouse_on = False
-        print("Mouse control stopped")
 
     def load_config(self):
         config = {}
@@ -124,18 +113,86 @@ class MouseControlInterface:
         # Default config dict
         config = {
             "MousePointerPoint": 8,
+            "MouseReference": 4,
+            "MouseClickRef": 12,
             "MouseSensibility_X": 1.4,
             "MouseSensibility_Y": 1.2,
             "ScreenOffSet_width": 0.2,
             "ScreenOffSet_height": 0.3,
-            "MouseReference": 4,
-            "MouseClickRef": 12,
             "DistanciaClick": 50,
             "DurationMove": 0.01
         }
         return config
+    
+    def start_mouse_control(self):
+        self.update_config_values()
+        self.process_controller = ProcessController()
+        if not self.running:
+            self.running = True          
+        # Create and start processes
+        self.process_controller.create_process(
+            "hand_tracking",
+            self.run_hand_tracking,
+            (self.process_controller.stop_event,
+             self.setup, self.config,)
+        )
+        self.process_controller.create_process(
+            "mouse_control",
+            self.run_mouse_control,
+            (self.process_controller.stop_event,
+             self.setup, self.config,)
+        )
+        self.process_controller.start_all()
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = MouseControlInterface(root)
-    root.mainloop()
+    def stop_mouse_control(self):
+        if self.running:
+            self.running = False
+            # Stop processes
+            self.process_controller.stop_all()
+
+    @staticmethod
+    def run_hand_tracking(queue, stop_event, setup, config):
+
+        points = {key: config[key] for key in ['MousePointerPoint', 'MouseReference', 'MouseClickRef']}
+        helper = MediaPipeHelper(setup)
+        
+        try:
+            while not stop_event.is_set():
+                coords = helper.main_mediapipe(points)
+                if coords:
+                    try:
+                        queue.put(coords, timeout=0.05)
+                    except q.Full:
+                        try:
+                            # Remove oldest item
+                            queue.get_nowait()
+                            # Try adding new data again
+                            queue.put_nowait(coords)
+                        except (q.Empty, q.Full):
+                            continue
+                    except Exception as e:
+                        print(f"Error in run_hand_mouse: {e}", flush=True)
+        finally:
+            helper.stop_capture()
+
+    @staticmethod
+    def run_mouse_control(queue, stop_event, setup, config):
+        helper = PyAutoGuiHelper(setup, config)
+        
+        while not stop_event.is_set():
+            try:
+                coords = queue.get_nowait()
+                if coords:
+                    helper.main_mouse(coords)
+            except q.Empty:
+                continue
+            except Exception as e:
+                print(f"Error in run_mouse_control: {e}", flush=True)
+
+    def run(self):
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.root.mainloop()
+
+    def on_closing(self):
+        self.stop_mouse_control()
+        self.root.destroy()
